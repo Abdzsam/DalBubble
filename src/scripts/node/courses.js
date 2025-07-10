@@ -11,7 +11,7 @@ const database =  path.join(__dirname, '../../../', 'database')
 const ratemyprofessor = path.join('../py',"ratemyprofessor.json")
 const search = path.join(database,"search.json")
 const subjects = path.join(database,"subjects.json")
-const output = path.join(database,"courses.txt")
+// const output = path.join(database,"courses.txt")
 
 // Mapping dictionaries for decoding codes
 const terms = {"10" : "Fall", "20": "Winter", "30": "Summer"}
@@ -36,7 +36,8 @@ Object.entries(subjectData).forEach(courseCode => {
 })
 
 // Final formatted result to be written to file
-const result = []
+// const result = []
+const jsonCourses = [];
 // Iterate through each course
 Object.entries(searchData).forEach(([courseCode, info]) => {
     const departmentPrefix = courseCode.slice(0,4)
@@ -65,96 +66,157 @@ Object.entries(searchData).forEach(([courseCode, info]) => {
         })
     })
 
-    const block = [];
+    // const block = [];
 
-    // Basic course info
-    block.push(`------`);
-    block.push(`Course Code: ${courseCode}`);
-    block.push(`Course Level: ${level}`);
-    if (departmentDesc) block.push(`Department: ${departmentDesc}`);
-    block.push(`Title: ${title}`);
-    block.push(`Credit Hours: ${creditHours} credit hours`);
+    // Basic course info for json file
+    const jsonCourse = {
+        course_code: courseCode,
+        level: parseInt(level),
+        department: departmentDesc,
+        title: title,
+        credit_hours: creditHours,
+        prerequisites: prerequisites,
+        equivalent: equivalent || null,
+        description: description,
+        terms: termClasses.map(tc => ({
+            term: `${terms[tc.term.slice(4,6)]} ${tc.term.slice(0,4)}`,
+            type: types[tc.type] || "",
+            section: tc.section || "",
+            days: (tc.days || []).map(day => daysName[day]),
+            time: tc.time && tc.time.start && tc.time.end 
+            ? `${convertTime(tc.time.start)} - ${convertTime(tc.time.end)}`
+            : "",
+            location: tc.location || "",
+            crn: tc.crn || ""
+        })),
+        instructors: instructorsCombined.map(instr => {
+            const rating = instr.rating;
+            return rating
+            ? {
+                name: `${rating.firstName} ${rating.lastName}`,
+                username: instr.name,
+                overall_rating: rating.overallRating,
+                would_take_again: rating.takeAgainRating,
+                difficulty: rating.difficultyLevel,
+                num_ratings: rating.numberOfRatings,
+                rmp_url: rating.rateMyProfLink
+                }
+            : { name: instr.name };
+        })
+        };
 
-    if (prerequisites.length) {
-        block.push(`Prerequisites: ${prerequisites.join(", ")}`);
-    } else {
-        block.push(`Prerequisites: None`);
-    }
+    jsonCourses.push(jsonCourse);
 
-    if (equivalent) {
-        block.push(`Equivalent: ${equivalent}`);
-    } else {
-        block.push(`Equivalent: None`);
-    }
 
-    block.push(`Description:`);
-    if (description) {
-        description.split("\n").forEach((line) => {
-        block.push(`  ${line.trim()}`);
-        });
-    } else {
-        block.push(`  (No description available)`);
-    }
+//     // Basic course info for text file
+//     block.push(`------`);
+//     block.push(`Course Code: ${courseCode}`);
+//     block.push(`Course Level: ${level}`);
+//     if (departmentDesc) block.push(`Department: ${departmentDesc}`);
+//     block.push(`Title: ${title}`);
+//     block.push(`Credit Hours: ${creditHours} credit hours`);
 
-    // Course offering info by term, type, etc.
-    if (termClasses.length) {
-        block.push(`Term Offerings:`);
-        termClasses.forEach((tc) => {
-        const term = terms[tc.term.slice(4,6)] + " " + tc.term.slice(0,4) || "";
-        const type = types[tc.type] || "";
-        const section = tc.section || "";
-        const days = (tc.days || []).map(day => daysName[day]).join(", ");
-        let timeString = "";
-        // Convert military to AM/PM time
-        if (tc.time && tc.time.start && tc.time.end) {
-            timeString = `${convertTime(tc.time.start)} - ${convertTime(tc.time.end)}`;
-        }
-        const loc = tc.location || "";
-        const crn = tc.crn || "";
+//     if (prerequisites.length) {
+//         block.push(`Prerequisites: ${prerequisites.join(", ")}`);
+//     } else {
+//         block.push(`Prerequisites: None`);
+//     }
 
-        let line = `  Term: ${term}`;
-        if (type)       line += ` | Type: ${type}`;
-        if (section)    line += ` | Section: ${section}`;
-        if (days)       line += ` | Days: ${days}`;
-        if (timeString) line += ` | Time: ${timeString}`;
-        if (loc)        line += ` | Location: ${loc}`;
-        if (crn)        line += ` | CRN: ${crn}`;
+//     if (equivalent) {
+//         block.push(`Equivalent: ${equivalent}`);
+//     } else {
+//         block.push(`Equivalent: None`);
+//     }
 
-        block.push(line);
-        });
-    }
-    // Instructor info, including ratings if available
-    if (instructorsCombined.length) {
-        block.push(`Instructors:`);
-        instructorsCombined.forEach((instr) => {
-        const name   = instr.name || "";
-        const rating = instr.rating;
+//     block.push(`Description:`);
+//     if (description) {
+//         description.split("\n").forEach((line) => {
+//         block.push(`  ${line.trim()}`);
+//         });
+//     } else {
+//         block.push(`  (No description available)`);
+//     }
 
-        if (rating) {
-            block.push(`  ${rating.firstName} ${rating.lastName} (${name})`);
-            block.push(`    Overall Rating: ${rating.overallRating} out of 5`);
-            block.push(`    Would Take Again: ${rating.takeAgainRating}`);
-            block.push(`    Difficulty: ${rating.difficultyLevel} out of 5`);
-            block.push(`    Number of Ratings: ${rating.numberOfRatings}`);
-            block.push(`    RateMyProfessor Profile: ${rating.rateMyProfLink}`);
-        } else {
-            block.push(`  ${name}`);
-        }
-        });
-    } else {
-        block.push(`Instructors: (none listed)`);
-    }
+//     // Course offering info by term, type, etc.
+//     if (termClasses.length) {
+//         block.push(`Term Offerings:`);
+//         termClasses.forEach((tc) => {
+//         const term = terms[tc.term.slice(4,6)] + " " + tc.term.slice(0,4) || "";
+//         const type = types[tc.type] || "";
+//         const section = tc.section || "";
+//         const days = (tc.days || []).map(day => daysName[day]).join(", ");
+//         let timeString = "";
+//         // Convert military to AM/PM time
+//         if (tc.time && tc.time.start && tc.time.end) {
+//             timeString = `${convertTime(tc.time.start)} - ${convertTime(tc.time.end)}`;
+//         }
+//         const loc = tc.location || "";
+//         const crn = tc.crn || "";
 
-    block.push(``);
-    result.push(block.join("\n"));
+//         let line = `  Term: ${term}`;
+//         if (type)       line += ` | Type: ${type}`;
+//         if (section)    line += ` | Section: ${section}`;
+//         if (days)       line += ` | Days: ${days}`;
+//         if (timeString) line += ` | Time: ${timeString}`;
+//         if (loc)        line += ` | Location: ${loc}`;
+//         if (crn)        line += ` | CRN: ${crn}`;
+
+//         block.push(line);
+//         });
+//     }
+//     // Instructor info, including ratings if available
+//     if (instructorsCombined.length) {
+//         block.push(`Instructors:`);
+//         instructorsCombined.forEach((instr) => {
+//         const name   = instr.name || "";
+//         const rating = instr.rating;
+
+//         if (rating) {
+//             block.push(`  ${rating.firstName} ${rating.lastName} (${name})`);
+//             block.push(`    Overall Rating: ${rating.overallRating} out of 5`);
+//             block.push(`    Would Take Again: ${rating.takeAgainRating}`);
+//             block.push(`    Difficulty: ${rating.difficultyLevel} out of 5`);
+//             block.push(`    Number of Ratings: ${rating.numberOfRatings}`);
+//             block.push(`    RateMyProfessor Profile: ${rating.rateMyProfLink}`);
+//         } else {
+//             block.push(`  ${name}`);
+//         }
+//         });
+//     } else {
+//         block.push(`Instructors: (none listed)`);
+//     }
+
+//     block.push(``);
+//     result.push(block.join("\n"));
 })
 
-// Write the final formatted text to courses.txt
+// // Write the final formatted text to courses.json
+// const jsonOutput = path.join(database, "courses.json");
+// try {
+//   fs.writeFileSync(jsonOutput, JSON.stringify(jsonCourses, null, 2), "utf-8");
+//   console.log(`Written courses.json to:\n ${jsonOutput}`);
+// } catch (err) {
+//   console.error("Error writing courses.json:", err);
+//   process.exit(1);
+// }
+
+// // Write the final formatted text to courses.txt
+// try {
+//   fs.writeFileSync(output, result.join("\n"), "utf-8");
+//   console.log(`Written courses.txt to:\n ${output}`);
+// } catch (err) {
+//   console.error("Error writing courses.txt:", err);
+//   process.exit(1);
+// }
+
+// Write the final formatted data to courses.jsonl
+const jsonlOutput = path.join(database, "courses.jsonl");
 try {
-  fs.writeFileSync(output, result.join("\n"), "utf-8");
-  console.log(`Written courses.txt to:\n ${output}`);
+  const jsonlContent = jsonCourses.map(obj => JSON.stringify(obj)).join("\n");
+  fs.writeFileSync(jsonlOutput, jsonlContent, "utf-8");
+  console.log(`Written courses.jsonl to:\n ${jsonlOutput}`);
 } catch (err) {
-  console.error("Error writing courses.txt:", err);
+  console.error("Error writing courses.jsonl:", err);
   process.exit(1);
 }
 

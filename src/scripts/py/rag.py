@@ -7,7 +7,7 @@ display_name = "Courses Corpus"
 file_display_name = "Dalhousie Courses"
 description = "Corpus for Dalhousie Courses"
 file_description = "Details of each course"
-path = "../../../database/courses.txt"
+path = "../../../database/courses.json"
 
 vertexai.init(project=PROJECT_ID, location="us-central1")
 
@@ -73,7 +73,7 @@ rag_retrieval_tool = Tool.from_retrieval(
 
 # Load Gemini model
 rag_model = GenerativeModel(
-    model_name="gemini-2.5-pro-preview-06-05",
+    model_name="gemini-2.5-flash",
     tools=[rag_retrieval_tool]
 )
 
